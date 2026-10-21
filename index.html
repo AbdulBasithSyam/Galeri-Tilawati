@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Tilawati Murid</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px; }
+        .card { max-width: 500px; background: #ffffff; margin: 20px auto; padding: 25px; border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+        h2 { text-align: center; color: #1e293b; margin-top: 0; font-size: 22px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; color: #334155; font-size: 14px; }
+        select, input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 15px; background-color: #f8fafc; }
+        select:focus, input:focus { outline: none; border-color: #2563eb; background-color: #fff; }
+        
+        .status-box { background-color: #f1f5f9; border-left: 4px solid #2563eb; padding: 12px 15px; margin: 20px 0 15px 0; border-radius: 6px; font-size: 14px; color: #1e293b; }
+        .status-box div { margin-bottom: 4px; }
+        .file-tag { font-family: monospace; background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #0f172a; }
+
+        audio { width: 100%; margin-top: 10px; border-radius: 8px; }
+        
+        .nav-buttons { display: flex; gap: 12px; margin-top: 18px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-prev { background-color: #e2e8f0; color: #334155; }
+        .btn-prev:hover { background-color: #cbd5e1; }
+        .btn-next { background-color: #2563eb; color: #ffffff; }
+        .btn-next:hover { background-color: #1d4ed8; }
+        .loading { font-size: 12px; color: #64748b; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Player Tilawati Murid</h2>
+
+    <!-- Pilihan Murid -->
+    <div class="form-group">
+        <label for="studentSelect">Pilih Nama Murid: <span id="loadingStatus" class="loading">(Memuat data dari Google Sheets...)</span></label>
+        <select id="studentSelect" onchange="loadAudio()">
+            <!-- Akan terisi otomatis dari Sheet Data Nama -->
+        </select>
+    </div>
+
+    <!-- Pilihan Surah -->
+    <div class="form-group">
+        <label for="surahSelect">Pilih Surah:</label>
+        <select id="surahSelect" onchange="resetAyatAndLoad()">
+            <option value="001">001 - Al-Fatihah</option>
+            <option value="002">002 - Al-Baqarah</option>
+            <option value="003">003 - Ali 'Imran</option>
+            <option value="112">112 - Al-Ikhlas</option>
+            <option value="113">113 - Al-Falaq</option>
+            <option value="114">114 - An-Nas</option>
+        </select>
+    </div>
+
+    <!-- Input Nomor Ayat -->
+    <div class="form-group">
+        <label for="ayatInput">Nomor Ayat:</label>
+        <input type="number" id="ayatInput" value="1" min="1" max="286" onchange="loadAudio()">
+    </div>
+
+    <!-- Display Status Kode File -->
+    <div class="status-box">
+        <div><strong>Nama File MP3:</strong> <span id="fileNameDisplay" class="file-tag">001001001.mp3</span></div>
+    </div>
+
+    <!-- Pemutar Audio -->
+    <audio id="audioPlayer" controls autoplay>
+        Browser Anda tidak mendukung elemen pemutar audio.
+    </audio>
+
+    <!-- Tombol Navigasi Ayat -->
+    <div class="nav-buttons">
+        <button class="btn btn-prev" onclick="changeAyat(-1)">⬅️ Ayat Sebelumnya</button>
+        <button class="btn btn-next" onclick="changeAyat(1)">Ayat Sesudahnya ➡️</button>
+    </div>
+</div>
+
+<script>
+    // Link CSV langsung dari hasil Publish to Web milik Anda
+const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4VMDaIIKuALXeEgcXJ7RyxnrWhXdwg0brAvozHDAXI5AASBdjAyUsBgunlOVClLsBrngs-a17QvNh/pub?single=true&gid=0&output=csv';
+
+    const studentSelect = document.getElementById('studentSelect');
+    const loadingStatus = document.getElementById('loadingStatus');
+
+    const fallbackStudents = [
+        { no: "001", nama: "Misyari Rasyid" },
+        { no: "002", nama: "Abdul Basith, S.Pd.I." }
+    ];
+
+    async function loadStudentData() {
+        try {
+            const response = await fetch(csvUrl);
+            const data = await response.text();
+            
+            const rows = data.split('\n').slice(1);
+            studentSelect.innerHTML = '';
+
+            let count = 0;
+            rows.forEach(row => {
+                const cols = row.split(',').map(col => col.replace(/"/g, '').trim());
+                if (cols.length >= 2 && cols[0]) {
+                    let noUrut = String(cols[0]).padStart(3, '0');
+                    let nama = cols[1];
+
+                    let option = document.createElement('option');
+                    option.value = noUrut;
+                    option.text = `${noUrut} - ${nama}`;
+                    studentSelect.appendChild(option);
+                    count++;
+                }
+            });
+
+            for (let i = count + 1; i <= 100; i++) {
+                let code = String(i).padStart(3, '0');
+                let option = document.createElement('option');
+                option.value = code;
+                option.text = `${code} - Murid ${i}`;
+                studentSelect.appendChild(option);
+            }
+
+            loadingStatus.innerText = "(Terhubung ke Google Sheets)";
+        } catch (error) {
+            console.error("Gagal memuat Google Sheets:", error);
+            loadingStatus.innerText = "(Menggunakan data lokal)";
+            loadFallbackStudents();
+        }
+        loadAudio();
+    }
+
+    function loadFallbackStudents() {
+        studentSelect.innerHTML = '';
+        for (let i = 1; i <= 100; i++) {
+            let code = String(i).padStart(3, '0');
+            let found = fallbackStudents.find(m => m.no === code);
+            let name = found ? found.nama : `Murid ${i}`;
+
+            let option = document.createElement('option');
+            option.value = code;
+            option.text = `${code} - ${name}`;
+            studentSelect.appendChild(option);
+        }
+    }
+
+    function pad3(num) {
+        return String(num).padStart(3, '0');
+    }
+
+    function loadAudio() {
+        const studentCode = studentSelect.value || "001";
+        const surahCode = document.getElementById('surahSelect').value;
+        let ayatNum = parseInt(document.getElementById('ayatInput').value) || 1;
+
+        if (ayatNum < 1) ayatNum = 1;
+        document.getElementById('ayatInput').value = ayatNum;
+
+        const ayatCode = pad3(ayatNum);
+        const fileName = `${studentCode}${surahCode}${ayatCode}.mp3`;
+        
+        document.getElementById('fileNameDisplay').innerText = fileName;
+
+        const audioPlayer = document.getElementById('audioPlayer');
+        audioPlayer.src = `audio/${fileName}`;
+        audioPlayer.load();
+    }
+
+    function changeAyat(step) {
+        let ayatInput = document.getElementById('ayatInput');
+        let currentAyat = parseInt(ayatInput.value) || 1;
+        let newAyat = currentAyat + step;
+
+        if (newAyat >= 1) {
+            ayatInput.value = newAyat;
+            loadAudio();
+        }
+    }
+
+    function resetAyatAndLoad() {
+        document.getElementById('ayatInput').value = 1;
+        loadAudio();
+    }
+
+    loadStudentData();
+</script>
+
+</body>
+</html>
