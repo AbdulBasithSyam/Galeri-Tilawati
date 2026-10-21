@@ -144,7 +144,7 @@ const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4VMDaIIKuALXeE
         return String(num).padStart(3, '0');
     }
 
-    function loadAudio() {
+   function loadAudio() {
         const studentCode = studentSelect.value || "001";
         const surahCode = document.getElementById('surahSelect').value;
         let ayatNum = parseInt(document.getElementById('ayatInput').value) || 1;
@@ -160,6 +160,11 @@ const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4VMDaIIKuALXeE
         const audioPlayer = document.getElementById('audioPlayer');
         audioPlayer.src = `audio/${fileName}`;
         audioPlayer.load();
+
+        // TAMBAHAN: Perintah otomatis play setelah file dimuat
+        audioPlayer.play().catch(error => {
+            console.log("Menunggu interaksi pengguna atau file audio tidak ditemukan.");
+        });
     }
 
     function changeAyat(step) {
